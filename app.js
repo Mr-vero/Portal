@@ -69,6 +69,10 @@ const MAX_RECONNECT_ATTEMPTS = 5;
 let isTyping = false;
 let typingTimeout;
 
+// Add these constants at the top of your file
+const CHUNK_SIZE = 16384; // 16KB chunks
+const QUEUE_LIMIT = 64 * 1024 * 1024; // 64MB queue limit
+
 // Generate or use existing connection ID from URL
 function initializeConnection() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -350,34 +354,75 @@ document.getElementById('fileInput').addEventListener('change', (event) => {
         dataChannel.send(JSON.stringify(fileMetadata));
         notyf.success(`Starting upload: ${file.name}`);
 
-        // Then send the file data in chunks
-        const chunkSize = 16384; // 16KB chunks
+        // Initialize file reading
         const fileReader = new FileReader();
         let offset = 0;
+        let chunkBuffer = [];
+        
+        fileReader.onload = async (e) => {
+            chunkBuffer.push(e.target.result);
+            
+            // Try to send chunks from buffer
+            while (chunkBuffer.length > 0 && dataChannel.bufferedAmount < QUEUE_LIMIT) {
+                const chunk = chunkBuffer.shift();
+                try {
+                    dataChannel.send(chunk);
+                    offset += chunk.byteLength;
+                    updateFileProgress(offset, file.size, file.name);
+                } catch (error) {
+                    console.error('Error sending chunk:', error);
+                    chunkBuffer.unshift(chunk); // Put chunk back at start of buffer
+                    break;
+                }
+            }
 
-        fileReader.onload = (e) => {
-            dataChannel.send(e.target.result);
-            offset += e.target.result.byteLength;
-            
-            updateFileProgress(offset, file.size, file.name);
-            
-            if (offset < file.size) {
-                // Read the next chunk
-                readChunk();
-            } else {
-                // File transfer complete
+            // If we've read all chunks and sent them all
+            if (offset >= file.size && chunkBuffer.length === 0) {
                 appendMessage(`You sent a file: ${file.name}`);
                 playMessageSentSound();
                 notyf.success(`File sent successfully: ${file.name}`);
+            } else if (offset < file.size) {
+                // If buffer is not too full, read next chunk
+                if (chunkBuffer.length < 5) {
+                    readNextChunk();
+                } else {
+                    // Wait for buffer to clear
+                    waitForBuffer();
+                }
             }
         };
 
-        const readChunk = () => {
-            const slice = file.slice(offset, offset + chunkSize);
+        const readNextChunk = () => {
+            const slice = file.slice(offset, offset + CHUNK_SIZE);
             fileReader.readAsArrayBuffer(slice);
         };
 
-        readChunk(); // Start reading the first chunk
+        const waitForBuffer = () => {
+            setTimeout(() => {
+                if (dataChannel.bufferedAmount < QUEUE_LIMIT) {
+                    if (chunkBuffer.length > 0) {
+                        // Trigger onload to process buffered chunks
+                        fileReader.onload({ target: { result: new ArrayBuffer(0) } });
+                    } else {
+                        readNextChunk();
+                    }
+                } else {
+                    waitForBuffer();
+                }
+            }, 100);
+        };
+
+        // Start the first chunk
+        readNextChunk();
+
+        // Add bufferedamountlow event handler
+        dataChannel.onbufferedamountlow = () => {
+            if (chunkBuffer.length > 0) {
+                // Trigger onload to process buffered chunks
+                fileReader.onload({ target: { result: new ArrayBuffer(0) } });
+            }
+        };
+
     } else if (!dataChannel || dataChannel.readyState !== 'open') {
         notyf.error("Connection not established yet. Please wait.");
     }
@@ -559,15 +604,34 @@ function updateFileProgress(current, total, filename = '') {
     
     const progress = (current / total) * 100;
     
+    // Calculate transfer speed
+    const now = Date.now();
+    if (!window.lastProgressUpdate) {
+        window.lastProgressUpdate = { time: now, bytes: 0 };
+    }
+    
+    const timeDiff = now - window.lastProgressUpdate.time;
+    const bytesDiff = current - window.lastProgressUpdate.bytes;
+    
+    if (timeDiff > 1000) { // Update speed every second
+        const speed = (bytesDiff / timeDiff) * 1000; // bytes per second
+        const speedText = speed > 1048576 
+            ? `${(speed/1048576).toFixed(1)} MB/s`
+            : `${(speed/1024).toFixed(1)} KB/s`;
+        
+        text.textContent = `${filename} (${speedText})`;
+        window.lastProgressUpdate = { time: now, bytes: current };
+    }
+    
     container.style.display = 'block';
     fill.style.width = `${progress}%`;
-    text.textContent = filename ? `Uploading ${filename}...` : 'Uploading file...';
     percent.textContent = `${Math.round(progress)}%`;
     
     if (progress >= 100) {
         setTimeout(() => {
             container.style.display = 'none';
             fill.style.width = '0%';
+            window.lastProgressUpdate = null;
         }, 1000);
     }
 }
