@@ -285,15 +285,14 @@
             const messageDiv = document.createElement('div');
             const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             
-            if (message.startsWith('You:')) {
-                messageDiv.className = 'message sent';
-                message = message.replace('You:', '');
-            } else if (message.startsWith('Peer:')) {
-                messageDiv.className = 'message received';
-                message = message.replace('Peer:', '');
-            } else {
-                messageDiv.className = 'message sent';
-            }
+            // Determine if the message is from peer or user
+            let isPeer = message.startsWith('Peer:') || message.includes('Peer sent a file:');
+            
+            // Set appropriate class
+            messageDiv.className = isPeer ? 'message received' : 'message sent';
+            
+            // Clean up message text
+            message = message.replace('You:', '').replace('Peer:', '');
 
             // Handle file messages
             if (message.includes('sent a file:') || message.includes('Received a file:')) {
