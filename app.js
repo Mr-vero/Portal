@@ -196,9 +196,8 @@ document.getElementById('sendMessage').addEventListener('click', () => {
 });
 
 // Send file
-document.getElementById('sendFile').addEventListener('click', () => {
-    const fileInput = document.getElementById('fileInput');
-    const file = fileInput.files[0];
+document.getElementById('fileInput').addEventListener('change', (event) => {
+    const file = event.target.files[0];
     if (file && dataChannel && dataChannel.readyState === 'open') {
         // Send file in chunks
         const reader = new FileReader();
@@ -207,6 +206,8 @@ document.getElementById('sendFile').addEventListener('click', () => {
             appendMessage(`You sent a file: ${file.name}`);
         };
         reader.readAsArrayBuffer(file);
+    } else if (!dataChannel || dataChannel.readyState !== 'open') {
+        alert("Connection not established yet. Please wait.");
     }
 });
 
