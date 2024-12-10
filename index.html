@@ -5,31 +5,48 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.js"></script>
     <style>
+        :root {
+            --primary-color: #4F46E5;
+            --secondary-color: #818CF8;
+            --background-color: #F8FAFC;
+            --message-sent: #4F46E5;
+            --message-received: #ffffff;
+            --text-primary: #1E293B;
+            --text-secondary: #64748B;
+            --success-color: #10B981;
+            --error-color: #EF4444;
+            --warning-color: #F59E0B;
+        }
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: 'Inter', sans-serif;
+            font-family: 'Plus Jakarta Sans', sans-serif;
         }
 
         body {
-            background-color: #ffffff;
+            background-color: var(--background-color);
             height: 100vh;
             display: flex;
             flex-direction: column;
+            color: var(--text-primary);
         }
 
         /* Header Styles */
         .header {
-            background-color: #000000;
-            color: white;
+            background-color: #ffffff;
+            color: var(--text-primary);
             padding: 16px;
             position: fixed;
             top: 0;
             width: 100%;
             z-index: 1000;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
 
         .connection-info {
@@ -40,30 +57,254 @@
 
         .connection-info h2 {
             font-weight: 600;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
             letter-spacing: -0.5px;
         }
 
         #connectionStatus {
             font-size: 13px;
             padding: 6px 12px;
-            border-radius: 6px;
-            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            background: var(--background-color);
             font-weight: 500;
+            transition: all 0.3s ease;
         }
 
-        #connectionId {
+        /* Message Styles */
+        .message {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 16px;
+            position: relative;
+            word-wrap: break-word;
+            font-size: 14px;
+            line-height: 1.5;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            transition: transform 0.2s ease;
+        }
+
+        .message:hover {
+            transform: translateY(-1px);
+        }
+
+        .message.sent {
+            background: var(--message-sent);
+            color: #ffffff;
+            align-self: flex-end;
+            margin-left: auto;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.received {
+            background: var(--message-received);
+            color: var(--text-primary);
+            align-self: flex-start;
+            margin-right: auto;
+            border-bottom-left-radius: 4px;
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+
+        /* File Upload Progress */
+        .file-progress-container {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 400px;
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            display: none;
+            z-index: 1000;
+        }
+
+        .file-progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .file-progress-bar {
+            height: 6px;
+            background: #E2E8F0;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .file-progress-fill {
+            height: 100%;
+            background: var(--primary-color);
+            width: 0;
+            transition: width 0.3s ease;
+        }
+
+        /* Status Colors */
+        .status-connecting { 
+            color: var(--warning-color);
+            background: #FEF3C7;
+        }
+        .status-connected { 
+            color: var(--success-color);
+            background: #D1FAE5;
+        }
+        .status-disconnected { 
+            color: var(--error-color);
+            background: #FEE2E2;
+        }
+        .status-reconnecting { 
+            color: var(--warning-color);
+            background: #FEF3C7;
+        }
+        .status-error { 
+            color: var(--error-color);
+            background: #FEE2E2;
+        }
+
+        /* Typing Indicator */
+        .typing-indicator {
+            padding: 8px 16px;
             font-size: 12px;
-            opacity: 0.7;
-            margin-top: 4px;
-            font-weight: 400;
+            color: var(--text-secondary);
+            text-align: center;
+            background: white;
+            border-radius: 20px;
+            margin: 8px auto;
+            max-width: 120px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            animation: pulse 1.5s infinite;
         }
 
-        /* Chat Container */
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        /* Read Receipt */
+        .message.read .time::after {
+            content: '✓✓';
+            margin-left: 4px;
+            color: #A5B4FC;
+        }
+
+        /* Input Area Enhancements */
+        .input-area {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            padding: 16px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            box-shadow: 0 -1px 3px rgba(0,0,0,0.1);
+            max-width: 900px;
+            margin: 0 auto;
+            border-radius: 16px 16px 0 0;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            min-width: 44px;
+            height: 44px;
+        }
+
+        #fileInput {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+            z-index: 2;
+        }
+
+        .file-button {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 44px;
+            height: 44px;
+            background: var(--primary-color);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .file-button:hover {
+            background: var(--secondary-color);
+            transform: translateY(-1px);
+        }
+
+        #messageInput {
+            flex: 1;
+            height: 44px;
+            padding: 12px 16px;
+            border: 1px solid #E2E8F0;
+            border-radius: 12px;
+            outline: none;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            background: var(--background-color);
+        }
+
+        #messageInput:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+            background: white;
+        }
+
+        #messageInput::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .input-area button {
+            min-width: 44px;
+            height: 44px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .input-area button:hover {
+            background: var(--secondary-color);
+            transform: translateY(-1px);
+        }
+
+        .input-area button:disabled {
+            background: #E2E8F0;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .input-area i {
+            font-size: 16px;
+        }
+
+        /* Add padding to chat container to prevent message hiding behind input area */
         .chat-container {
             flex: 1;
             padding: 80px 0 80px;
             overflow-y: auto;
             background: #f8f8f8;
+            padding-bottom: 90px;
         }
 
         #chatBox {
@@ -79,120 +320,12 @@
             margin: 0 auto;
         }
 
-        .message {
-            max-width: 70%;
-            padding: 12px 16px;
-            border-radius: 12px;
-            position: relative;
-            word-wrap: break-word;
-            font-size: 14px;
-            line-height: 1.5;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-        }
-
-        .message.sent {
-            background: #000000;
-            color: #ffffff;
-            align-self: flex-end;
-            margin-left: auto;
-            border-bottom-right-radius: 4px;
-        }
-
-        .message.received {
-            background: white;
-            color: #000000;
-            align-self: flex-start;
-            margin-right: auto;
-            border-bottom-left-radius: 4px;
-        }
-
         .message .time {
             font-size: 11px;
             opacity: 0.7;
             float: right;
             margin-left: 8px;
             margin-top: 4px;
-        }
-
-        /* Input Area */
-        .input-area {
-            position: fixed;
-            bottom: 0;
-            width: 100%;
-            background: white;
-            padding: 16px;
-            display: flex;
-            gap: 12px;
-            align-items: center;
-            box-shadow: 0 -1px 4px rgba(0,0,0,0.1);
-            max-width: 900px;
-            left: 50%;
-            transform: translateX(-50%);
-        }
-
-        #messageInput {
-            flex: 1;
-            padding: 12px 16px;
-            border: 1px solid #e0e0e0;
-            border-radius: 12px;
-            outline: none;
-            font-size: 14px;
-            transition: border-color 0.2s;
-        }
-
-        #messageInput:focus {
-            border-color: #000000;
-        }
-
-        .input-area button {
-            background: #000000;
-            color: white;
-            border: none;
-            width: 44px;
-            height: 44px;
-            border-radius: 12px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background-color 0.2s;
-        }
-
-        .input-area button:hover {
-            background: #333333;
-        }
-
-        .file-input-wrapper {
-            position: relative;
-            width: 44px;
-            height: 44px;
-        }
-
-        #fileInput {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            opacity: 0;
-            cursor: pointer;
-        }
-
-        .file-button {
-            width: 44px;
-            height: 44px;
-            background: #000000;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-
-        .file-button:hover {
-            background: #333333;
         }
 
         /* File message styles */
@@ -242,22 +375,16 @@
 
             .input-area {
                 padding: 12px;
+                border-radius: 0;
             }
 
             .header {
                 padding: 12px;
             }
-        }
 
-        .typing-indicator {
-            padding: 8px 16px;
-            font-size: 12px;
-            color: #666;
-            text-align: center;
-            background: rgba(0,0,0,0.05);
-            border-radius: 16px;
-            margin: 8px auto;
-            max-width: 120px;
+            #messageInput {
+                font-size: 16px; /* Prevent zoom on mobile */
+            }
         }
 
         .file-progress {
@@ -269,18 +396,6 @@
             bottom: 80px;
             left: 0;
             right: 0;
-        }
-
-        .status-connecting { color: #FFA000; }
-        .status-connected { color: #4CAF50; }
-        .status-disconnected { color: #F44336; }
-        .status-reconnecting { color: #FF9800; }
-        .status-error { color: #D32F2F; }
-
-        .message.read .time::after {
-            content: '✓✓';
-            margin-left: 4px;
-            color: #4CAF50;
         }
 
         .message {
@@ -322,6 +437,23 @@
             <i class="fas fa-paper-plane"></i>
         </button>
     </div>
+
+    <div class="file-progress-container" id="fileProgressContainer">
+        <div class="file-progress-header">
+            <span id="fileProgressText">Uploading file...</span>
+            <span id="fileProgressPercent">0%</span>
+        </div>
+        <div class="file-progress-bar">
+            <div class="file-progress-fill" id="fileProgressFill"></div>
+        </div>
+    </div>
+
+    <audio id="messageSentSound" preload="auto">
+        <source src="data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAASAAAeMwAUFBQUFCIiIiIiIjAwMDAwPj4+Pj4+TExMTExZWVlZWVlnZ2dnZ3V1dXV1dYODg4ODkZGRkZGRn5+fn5+frKysrKy6urq6urrIyMjIyNbW1tbW1uTk5OTk8vLy8vLy//////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAQKAAAAAAAAHjOZTf9/AAAAAAAAAAAAAAAAAAAAAP/7kGQAAANUMEoFPeACNQV40KEYABEY41g5vAAA9RjpZxRwAImU+W8eshaFpAQgALAAYALATx/nYDYCMJ0HITQYYA7AH4c7MoGsnCMU5pnW+OQnBcDrQ9Xx7w37/D+PimYavV8elKUpT5fqx5VjV6vZ38eJR48eRKa9KUp7v396UgPHkQwMAAAAAA//8MAOp39CECAAhlIEEIIECBAgTT1oj///tEQYT0wgEIYxgDC09aIiE7u7u7uIiIz+LtoIQGE/+XAGYLjpTAIOGYYy0ZACgDgSNFxC7YYiINocwERjAEDhIy0mRoGwAE7lOTBsGhj1qrXNCU9GrgwSPr80jj0dIpT9DRUNHKJbRxiWSiifVHuD2b0EbjLkOUzSXztP3uE1JpHzV6NPq+f3P5T0/f/lNH7lWTavQ5Xz1yLVe653///qf93B7f/vMdaKJAAJAMAIwIMAHMpzDkoYwD8CR717zVb8/p54P3MikXGCEWhQOEAOAdP6v8b8oNL/EzdnROC8Zo+z+71O8VVAGIKFEglKbidkoLam0mAFiwo0ZoVExf/7kmQLgAQyZFxvPWAENcVKXeK0ABAk2WFMaSNIzBMptBYfArbkZgpWjEQpcmjxQoG2qREWQcvpzuuIm29THt3ElhDNlrXV///XTGbm7Kbx0ymcRX///x7GVvquf5vk/dPs0Wi5Td1vggDxqbNII4bAPTU3Ix5h9FJTe7zv1LHG/uPsPrvth0ejchVzVT3giirs6sQAACgQAAIAdaXbRAYra/2t0//3HwqLKIlBOJhOg4BzAOkt+MOL6H8nlNvKyi3rOnqP//zf6AATwBAKIcHKixxwjl1TjDVIrvTqdmKQOFQBUBDwZ1EhHlDEGEVyGQWBAHrcJgRSXYbkvHK/8/6rbYjs4Qj0C8mRy2hwRv/82opGT55fROgRoBTjanaiQiMRHUu1/P3V9yGFffaVv78U1/6l/kpo0cz73vuSv/9GeaqDVRA5bWdHRKQKIEAAAAoIktKeEmdQFKN5sguv/ZSC0oxCAR7CzcJgEsd8cA0M/x0tzv15E7//5L5KCqoIAAmBFIKM1UxYtMMFjLKESTE8lhaelUyCBYeA2IN4rK1iDt//+5JkEgAkZzlVq29D8DJDWo0YLLARwPFZrL0PyLsUazTAlpI+hKSx01VSOfbjXg0iW9/jVPDleLJ15QQA4Okdc5ByMDFIeuCCE5CvevwBGH8YibiX9FtaIIgUikF42wrZw6ZJ6WlHrA+Ki5++NNMeYH1lEkwwJAIJB4ugVFguXFc20Vd/FLlvq1GSiSwAFABABABA47k6BFeNvxEQZO9v3L1IE4iEVElfrXmEmlyWIyGslFA55gH/sW7////o9AAFIBIIAAIUMzYTTNkgsAmYObfwQyzplrOmYvq0BKCKNN+nUTbvD7cJzvHxrEWG5QqvP8U1vFJLB4M1pf6UNBSLbtg9WndvPY1EZakVSSYvJqkXUTbhHHkMzWp/+2V001E3q3r9STr/7UlkY0wNmFnMzHHXRHACBApF1gRLjW3f4kxBhh7g1+RIAO0oIk0CTnhBQVxHqv79ZmQCGAAGAYAAYYzWYSp0GvxhwLqpBMhGypOP3BoAlBQIGARoQJ4Bg8SAgwVcTccGKLEWQFhiGKR41QgXLi5dWjR6uswE3LFi1YsfLFyS/+5JkFQAkb0LWa0lD8DUFSn0YLLARwQdb0YsPwL8VajRAlpOGKE8ePHjv4xUuXLl+OXHLsN8O/5cPQ+Xz3L1y5cvnz588v/P+XHnwweezCxctWrVz/nz+XLl6+fPn/0M+RrJ8vQkIN/jDgAlBQIGARoQJ4Bg8SAgwVcTccGKLEWQFhiGKR41QgXLi5dWjR6uswE3LFi1YsfLFyS8ePHjv4xUuXLl+OXHLsN8O/5cPQ+Xz3L1y5cvnz588v/P+XHnwweezCxctWrVz/nz+XLl6+fPn/0M+RrJ8vQkIN/X7kVfABJHkYfF8Nj9XIREu7iYgAaYoIyYLAAAAACC+MVFSKoVNVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV" type="audio/mpeg">
+    </audio>
+    <audio id="messageReceivedSound" preload="auto">
+        <source src="data:audio/mpeg;base64,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VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV" type="audio/mpeg">
+    </audio>
 
     <script src="app.js"></script>
     <script>

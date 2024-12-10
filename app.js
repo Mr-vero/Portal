@@ -1,3 +1,54 @@
+// Add at the very beginning of app.js, before any other code
+const notyf = new Notyf({
+    duration: 3000,
+    position: { x: 'right', y: 'top' },
+    dismissible: true,
+    ripple: true,
+    types: [
+        {
+            type: 'success',
+            background: '#10B981',
+            icon: {
+                className: 'fas fa-check-circle',
+                tagName: 'i'
+            }
+        },
+        {
+            type: 'error',
+            background: '#EF4444',
+            icon: {
+                className: 'fas fa-times-circle',
+                tagName: 'i'
+            }
+        },
+        {
+            type: 'info',
+            background: '#4F46E5',
+            icon: {
+                className: 'fas fa-info-circle',
+                tagName: 'i'
+            }
+        },
+        {
+            type: 'warning',
+            background: '#F59E0B',
+            icon: {
+                className: 'fas fa-exclamation-circle',
+                tagName: 'i'
+            }
+        }
+    ]
+});
+
+// Add sound functions
+function playMessageSentSound() {
+    document.getElementById('messageSentSound').play().catch(e => console.log('Sound play failed:', e));
+}
+
+function playMessageReceivedSound() {
+    document.getElementById('messageReceivedSound').play().catch(e => console.log('Sound play failed:', e));
+}
+
 // WebRTC configuration
 const peerConnection = new RTCPeerConnection({
     iceServers: [
@@ -174,7 +225,8 @@ function setupDataChannel() {
                         expectedFile = data;
                         receivedChunks = [];
                         receivedSize = 0;
-                        updateFileProgress(0, expectedFile.size);
+                        updateFileProgress(0, expectedFile.size, expectedFile.name);
+                        notyf.info(`Receiving file: ${expectedFile.name}`);
                         return;
                     case 'heartbeat':
                         handleHeartbeat();
@@ -183,13 +235,14 @@ function setupDataChannel() {
             } catch (e) {
                 // If it's not JSON, treat it as a regular message
                 appendMessage(`Peer: ${event.data}`);
+                playMessageReceivedSound();
                 sendReadReceipt();
             }
         } else if (event.data instanceof ArrayBuffer && expectedFile) {
             // Update file transfer progress
             receivedChunks.push(event.data);
             receivedSize += event.data.byteLength;
-            updateFileProgress(receivedSize, expectedFile.size);
+            updateFileProgress(receivedSize, expectedFile.size, expectedFile.name);
             
             // Check if file is completely received
             if (receivedSize === expectedFile.size) {
@@ -217,6 +270,9 @@ function setupDataChannel() {
                     </div>
                 `);
 
+                playMessageReceivedSound();
+                notyf.success(`File received: ${expectedFile.name}`);
+                
                 // Reset file reception
                 expectedFile = null;
                 receivedChunks = [];
@@ -292,6 +348,7 @@ document.getElementById('fileInput').addEventListener('change', (event) => {
             mimeType: file.type
         };
         dataChannel.send(JSON.stringify(fileMetadata));
+        notyf.success(`Starting upload: ${file.name}`);
 
         // Then send the file data in chunks
         const chunkSize = 16384; // 16KB chunks
@@ -302,12 +359,16 @@ document.getElementById('fileInput').addEventListener('change', (event) => {
             dataChannel.send(e.target.result);
             offset += e.target.result.byteLength;
             
+            updateFileProgress(offset, file.size, file.name);
+            
             if (offset < file.size) {
                 // Read the next chunk
                 readChunk();
             } else {
                 // File transfer complete
                 appendMessage(`You sent a file: ${file.name}`);
+                playMessageSentSound();
+                notyf.success(`File sent successfully: ${file.name}`);
             }
         };
 
@@ -318,7 +379,7 @@ document.getElementById('fileInput').addEventListener('change', (event) => {
 
         readChunk(); // Start reading the first chunk
     } else if (!dataChannel || dataChannel.readyState !== 'open') {
-        alert("Connection not established yet. Please wait.");
+        notyf.error("Connection not established yet. Please wait.");
     }
 });
 
@@ -398,6 +459,22 @@ function updateConnectionStatus(status) {
     statusElement.textContent = statusMessages[status] || status;
     statusElement.className = `status-${status}`;
     
+    // Show notification for status changes
+    switch(status) {
+        case 'connected':
+            notyf.success('Connected successfully');
+            break;
+        case 'disconnected':
+            notyf.error('Connection lost');
+            break;
+        case 'reconnecting':
+            notyf.info('Attempting to reconnect...');
+            break;
+        case 'error':
+            notyf.error('Connection error occurred');
+            break;
+    }
+    
     // Update UI based on connection status
     document.getElementById('messageInput').disabled = status !== 'connected';
     document.getElementById('fileInput').disabled = status !== 'connected';
@@ -474,16 +551,24 @@ function handleReadReceipt(messageId) {
 }
 
 // Add file transfer progress
-function updateFileProgress(current, total) {
+function updateFileProgress(current, total, filename = '') {
+    const container = document.getElementById('fileProgressContainer');
+    const fill = document.getElementById('fileProgressFill');
+    const text = document.getElementById('fileProgressText');
+    const percent = document.getElementById('fileProgressPercent');
+    
     const progress = (current / total) * 100;
-    const progressBar = document.getElementById('fileProgress');
-    if (progressBar) {
-        progressBar.style.width = `${progress}%`;
-        if (progress >= 100) {
-            setTimeout(() => {
-                progressBar.style.display = 'none';
-            }, 1000);
-        }
+    
+    container.style.display = 'block';
+    fill.style.width = `${progress}%`;
+    text.textContent = filename ? `Uploading ${filename}...` : 'Uploading file...';
+    percent.textContent = `${Math.round(progress)}%`;
+    
+    if (progress >= 100) {
+        setTimeout(() => {
+            container.style.display = 'none';
+            fill.style.width = '0%';
+        }, 1000);
     }
 }
 
