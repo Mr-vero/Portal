@@ -8,6 +8,16 @@ let dataChannel;
 let connectionId;
 let pendingCandidates = [];
 
+// Add connection state variables
+let isConnecting = false;
+let reconnectAttempts = 0;
+let reconnectInterval;
+const MAX_RECONNECT_ATTEMPTS = 5;
+
+// Add typing state
+let isTyping = false;
+let typingTimeout;
+
 // Generate or use existing connection ID from URL
 function initializeConnection() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -120,47 +130,67 @@ function joinPeerConnection() {
 
 function setupDataChannel() {
     console.log("Setting up data channel:", dataChannel.label);
-    console.log("Initial data channel state:", dataChannel.readyState);
-
+    
+    updateConnectionStatus('connecting');
+    
     dataChannel.onopen = () => {
         console.log("Data channel is open");
-        document.getElementById('connectionStatus').textContent = 'Connected';
-        document.getElementById('connectionId').textContent = `Connection ID: ${connectionId}`;
+        updateConnectionStatus('connected');
+        startHeartbeat();
+        reconnectAttempts = 0;
     };
 
     dataChannel.onerror = (error) => {
         console.error("Data Channel Error:", error);
+        updateConnectionStatus('error');
     };
 
     dataChannel.onclose = () => {
         console.log("Data channel closed");
-        document.getElementById('connectionStatus').textContent = 'Disconnected';
+        updateConnectionStatus('disconnected');
+        attemptReconnect();
     };
 
     let expectedFile = null;
     let receivedChunks = [];
     let receivedSize = 0;
 
+    // Add handling for typing and read receipts
     dataChannel.onmessage = (event) => {
         if (typeof event.data === 'string') {
             try {
                 const data = JSON.parse(event.data);
-                if (data.type === 'file-meta') {
-                    // Initialize file reception
-                    expectedFile = data;
-                    receivedChunks = [];
-                    receivedSize = 0;
-                    return;
+                
+                // Handle different types of control messages
+                switch(data.type) {
+                    case 'typing':
+                        handlePeerTyping(data.isTyping);
+                        return;
+                    case 'read':
+                        handleReadReceipt(data.messageId);
+                        return;
+                    case 'file-meta':
+                        // Existing file metadata handling
+                        expectedFile = data;
+                        receivedChunks = [];
+                        receivedSize = 0;
+                        updateFileProgress(0, expectedFile.size);
+                        return;
+                    case 'heartbeat':
+                        handleHeartbeat();
+                        return;
                 }
             } catch (e) {
                 // If it's not JSON, treat it as a regular message
                 appendMessage(`Peer: ${event.data}`);
+                sendReadReceipt();
             }
         } else if (event.data instanceof ArrayBuffer && expectedFile) {
-            // Accumulate file chunks
+            // Update file transfer progress
             receivedChunks.push(event.data);
             receivedSize += event.data.byteLength;
-
+            updateFileProgress(receivedSize, expectedFile.size);
+            
             // Check if file is completely received
             if (receivedSize === expectedFile.size) {
                 // Combine chunks into a single blob
@@ -353,6 +383,126 @@ function cleanup() {
 window.onbeforeunload = () => {
     cleanup();
 };
+
+// Add connection status management
+function updateConnectionStatus(status) {
+    const statusElement = document.getElementById('connectionStatus');
+    const statusMessages = {
+        'connecting': 'Connecting...',
+        'connected': 'Connected',
+        'disconnected': 'Disconnected',
+        'reconnecting': 'Reconnecting...',
+        'error': 'Connection Error'
+    };
+    
+    statusElement.textContent = statusMessages[status] || status;
+    statusElement.className = `status-${status}`;
+    
+    // Update UI based on connection status
+    document.getElementById('messageInput').disabled = status !== 'connected';
+    document.getElementById('fileInput').disabled = status !== 'connected';
+    document.getElementById('sendMessage').disabled = status !== 'connected';
+}
+
+// Add heartbeat mechanism
+function startHeartbeat() {
+    setInterval(() => {
+        if (dataChannel?.readyState === 'open') {
+            dataChannel.send(JSON.stringify({ type: 'heartbeat' }));
+        }
+    }, 5000);
+}
+
+function handleHeartbeat() {
+    // Reset reconnection attempts on successful heartbeat
+    reconnectAttempts = 0;
+}
+
+// Add reconnection logic
+function attemptReconnect() {
+    if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+        updateConnectionStatus('error');
+        alert('Connection lost. Please refresh the page to reconnect.');
+        return;
+    }
+
+    reconnectAttempts++;
+    updateConnectionStatus('reconnecting');
+    
+    // Clear existing connection
+    cleanup();
+    
+    // Wait before attempting to reconnect
+    setTimeout(() => {
+        initializeConnection();
+    }, 2000 * reconnectAttempts);
+}
+
+// Add typing indicator
+function sendTypingStatus(isTyping) {
+    if (dataChannel?.readyState === 'open') {
+        dataChannel.send(JSON.stringify({
+            type: 'typing',
+            isTyping: isTyping
+        }));
+    }
+}
+
+function handlePeerTyping(isTyping) {
+    const typingIndicator = document.getElementById('typingIndicator');
+    typingIndicator.style.display = isTyping ? 'block' : 'none';
+}
+
+// Add read receipts
+function sendReadReceipt() {
+    if (dataChannel?.readyState === 'open') {
+        dataChannel.send(JSON.stringify({
+            type: 'read',
+            messageId: Date.now()
+        }));
+    }
+}
+
+function handleReadReceipt(messageId) {
+    // Update read status for messages
+    const messages = document.querySelectorAll('.message.sent');
+    messages.forEach(message => {
+        if (message.dataset.messageId && parseInt(message.dataset.messageId) <= messageId) {
+            message.classList.add('read');
+        }
+    });
+}
+
+// Add file transfer progress
+function updateFileProgress(current, total) {
+    const progress = (current / total) * 100;
+    const progressBar = document.getElementById('fileProgress');
+    if (progressBar) {
+        progressBar.style.width = `${progress}%`;
+        if (progress >= 100) {
+            setTimeout(() => {
+                progressBar.style.display = 'none';
+            }, 1000);
+        }
+    }
+}
+
+// Modify message input handling
+document.getElementById('messageInput').addEventListener('input', () => {
+    if (!isTyping) {
+        isTyping = true;
+        sendTypingStatus(true);
+    }
+    
+    // Clear existing timeout
+    clearTimeout(typingTimeout);
+    
+    // Set new timeout
+    typingTimeout = setTimeout(() => {
+        isTyping = false;
+        sendTypingStatus(false);
+    }, 1000);
+});
 
 // Initialize the connection
 console.log("Initializing connection...");

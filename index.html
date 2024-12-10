@@ -248,6 +248,48 @@
                 padding: 12px;
             }
         }
+
+        .typing-indicator {
+            padding: 8px 16px;
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+            background: rgba(0,0,0,0.05);
+            border-radius: 16px;
+            margin: 8px auto;
+            max-width: 120px;
+        }
+
+        .file-progress {
+            height: 4px;
+            background: #000;
+            width: 0;
+            transition: width 0.3s ease;
+            position: fixed;
+            bottom: 80px;
+            left: 0;
+            right: 0;
+        }
+
+        .status-connecting { color: #FFA000; }
+        .status-connected { color: #4CAF50; }
+        .status-disconnected { color: #F44336; }
+        .status-reconnecting { color: #FF9800; }
+        .status-error { color: #D32F2F; }
+
+        .message.read .time::after {
+            content: '✓✓';
+            margin-left: 4px;
+            color: #4CAF50;
+        }
+
+        .message {
+            transition: opacity 0.3s ease;
+        }
+
+        .message.sending {
+            opacity: 0.7;
+        }
     </style>
 </head>
 <body>
@@ -260,8 +302,12 @@
     </div>
 
     <div class="chat-container">
+        <div id="typingIndicator" class="typing-indicator" style="display: none;">
+            Peer is typing...
+        </div>
         <textarea id="chatBox" readonly></textarea>
         <div class="messages" id="messages"></div>
+        <div id="fileProgress" class="file-progress"></div>
     </div>
 
     <div class="input-area">
