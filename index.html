@@ -199,18 +199,40 @@
         .file-message {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 12px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            margin-top: 8px;
+            transition: background-color 0.2s;
+        }
+
+        .file-message:hover {
+            background: rgba(255, 255, 255, 0.2);
         }
 
         .file-message i {
-            font-size: 18px;
+            font-size: 24px;
+            width: 24px;
+            text-align: center;
         }
 
         .file-message a {
             color: inherit;
             text-decoration: none;
-            border-bottom: 1px solid currentColor;
+            font-weight: 500;
         }
+
+        .file-message a:hover {
+            text-decoration: underline;
+        }
+
+        /* File type specific colors */
+        .file-message[data-type^="image/"] i { color: #FF9800; }
+        .file-message[data-type^="video/"] i { color: #F44336; }
+        .file-message[data-type^="audio/"] i { color: #2196F3; }
+        .file-message[data-type^="text/"] i { color: #4CAF50; }
+        .file-message[data-type*="pdf"] i { color: #E91E63; }
 
         /* Mobile Optimization */
         @media (max-width: 768px) {
