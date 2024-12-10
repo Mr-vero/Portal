@@ -2,31 +2,285 @@
 <html>
 <head>
     <title>P2P Chat & File Transfer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        #chatBox { width: 100%; height: 300px; margin-bottom: 10px; }
-        #messageInput { width: 80%; margin-right: 10px; }
-        #connectionStatus { color: red; }
-        .status-bar { margin-bottom: 20px; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        body {
+            background-color: #eee;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header Styles */
+        .header {
+            background-color: #075E54;
+            color: white;
+            padding: 10px 16px;
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+        }
+
+        .connection-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #connectionStatus {
+            font-size: 14px;
+            padding: 4px 8px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        #connectionId {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        /* Chat Container */
+        .chat-container {
+            flex: 1;
+            padding: 60px 0;
+            overflow-y: auto;
+            background: #E5DDD5;
+            background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAABoSURBVDhP7ZPBCcAgDEUzukN1CS/O6B7OMZQmNEYrKPQQfx4kGvN4IeC3KiIvKsZYB86530yM0YwxbBXCTcVaW0Zk5qkQIjNzVbHWBu2NMZzeO+feH5KDIX2R4QylFJRSYIxh+HBgxh+oL5mKCwAAAABJRU5ErkJggg==');
+        }
+
+        #chatBox {
+            display: none; /* Hide the original textarea */
+        }
+
+        .messages {
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .message {
+            max-width: 75%;
+            padding: 8px 12px;
+            border-radius: 8px;
+            position: relative;
+            word-wrap: break-word;
+        }
+
+        .message.sent {
+            background: #DCF8C6;
+            align-self: flex-end;
+            margin-left: auto;
+        }
+
+        .message.received {
+            background: white;
+            align-self: flex-start;
+            margin-right: auto;
+        }
+
+        .message .time {
+            font-size: 11px;
+            color: #999;
+            float: right;
+            margin-left: 8px;
+            margin-top: 2px;
+        }
+
+        /* Input Area */
+        .input-area {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background: #F0F0F0;
+            padding: 10px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        #messageInput {
+            flex: 1;
+            padding: 9px 12px;
+            border: none;
+            border-radius: 20px;
+            outline: none;
+            font-size: 15px;
+        }
+
+        .input-area button {
+            background: #075E54;
+            color: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .input-area button:hover {
+            background: #128C7E;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            width: 40px;
+            height: 40px;
+            overflow: hidden;
+        }
+
+        #fileInput {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .file-button {
+            width: 40px;
+            height: 40px;
+            background: #075E54;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            cursor: pointer;
+        }
+
+        /* File message styles */
+        .file-message {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .file-message i {
+            font-size: 20px;
+        }
+
+        .file-message a {
+            color: #075E54;
+            text-decoration: none;
+        }
+
+        /* Mobile Optimization */
+        @media (max-width: 768px) {
+            .message {
+                max-width: 85%;
+            }
+
+            .input-area {
+                padding: 8px;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="status-bar">
-        <span id="connectionStatus">Disconnected</span>
-        <br>
-        <span id="connectionId"></span>
+    <div class="header">
+        <div class="connection-info">
+            <h2>P2P Chat</h2>
+            <span id="connectionStatus">Disconnected</span>
+        </div>
+        <div id="connectionId"></div>
     </div>
 
-    <textarea id="chatBox" readonly></textarea>
-    <div>
-        <input type="text" id="messageInput" placeholder="Type your message...">
-        <button id="sendMessage">Send Message</button>
+    <div class="chat-container">
+        <textarea id="chatBox" readonly></textarea>
+        <div class="messages" id="messages"></div>
     </div>
-    <div style="margin-top: 10px;">
-        <input type="file" id="fileInput">
-        <button id="sendFile">Send File</button>
+
+    <div class="input-area">
+        <div class="file-input-wrapper">
+            <input type="file" id="fileInput">
+            <div class="file-button">
+                <i class="fas fa-paperclip"></i>
+            </div>
+        </div>
+        <input type="text" id="messageInput" placeholder="Type a message">
+        <button id="sendMessage">
+            <i class="fas fa-paper-plane"></i>
+        </button>
     </div>
 
     <script src="app.js"></script>
+    <script>
+        // Modified appendMessage function to create WhatsApp-like messages
+        function appendMessage(message) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            
+            if (message.startsWith('You:')) {
+                messageDiv.className = 'message sent';
+                message = message.replace('You:', '');
+            } else if (message.startsWith('Peer:')) {
+                messageDiv.className = 'message received';
+                message = message.replace('Peer:', '');
+            } else {
+                messageDiv.className = 'message sent';
+            }
+
+            // Handle file messages
+            if (message.includes('sent a file:') || message.includes('Received a file:')) {
+                messageDiv.innerHTML = `
+                    <div class="file-message">
+                        <i class="fas fa-file"></i>
+                        ${message}
+                    </div>
+                    <span class="time">${time}</span>
+                `;
+            } else {
+                messageDiv.innerHTML = `
+                    ${message.trim()}
+                    <span class="time">${time}</span>
+                `;
+            }
+
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            
+            // Still update the hidden chatBox for localStorage
+            const chatBox = document.getElementById('chatBox');
+            chatBox.value += message + '\n';
+            localStorage.setItem('chatHistory', chatBox.value);
+        }
+
+        // Add enter key support for sending messages
+        document.getElementById('messageInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                document.getElementById('sendMessage').click();
+            }
+        });
+
+        // Restore chat history with the new message format
+        window.addEventListener('load', () => {
+            const chatHistory = localStorage.getItem('chatHistory');
+            if (chatHistory) {
+                chatHistory.split('\n').forEach(message => {
+                    if (message.trim()) {
+                        appendMessage(message);
+                    }
+                });
+            }
+        });
+    </script>
 </body>
 </html>
